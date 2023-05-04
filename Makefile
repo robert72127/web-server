@@ -9,7 +9,7 @@ all: webserver
 webserver: $(OBJS)
 	$(CC) $(CFLAGS) -o webserver $(OBJS)
 
-webserver.o: transport.c transport.h
+webserver.o: webserver.c webserver.h
 	$(CC) $(CFLAGS) -c webserver.c
 
 
