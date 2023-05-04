@@ -2,5 +2,11 @@
 #define BUFFER_SIZE 10000000    // 10 MB
 #define MAXLINE 80
 #define BACKLOG 16 // how many pending connections to hold
-#define SEPARATOR 'x'
 #define TIMEOUT 10 // timeout of 10 seconds :O
+
+/*stop parsing at double blank or error*/
+struct request {
+    char resource[MAXLINE];
+    char host[MAXLINE];
+    char connection[MAXLINE];
+};
