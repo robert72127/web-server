@@ -22,7 +22,6 @@ int main(int argc, char **argv) {
     char *resp_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     struct request *req = malloc(sizeof(struct request));
     int listenfd, confd;
-    char path[MAXLINE];
     bool keep_conv = 0;
 
     struct sockaddr_storage clientaddr;
@@ -64,17 +63,17 @@ int main(int argc, char **argv) {
         while(read_tcp(confd, WAITTIME, buffer)){
             keep_conv = parse_request(buffer, req, directory);
             if (keep_conv == 0){
-                create_response(req, resp_buffer, 1);
+                create_response(req, resp_buffer, port,directory, 1);
                 respond(confd,resp_buffer);
                 break;
             }
             else if (keep_conv == 2){
-                create_response(req, resp_buffer, 0);
+                create_response(req, resp_buffer,port,directory, 0);
                 respond(confd,resp_buffer);
                 break;
             }
             else if(keep_conv == 1){
-                create_response(req, resp_buffer, 0);
+                create_response(req, resp_buffer,port,directory, 0);
                 respond(confd,resp_buffer);
             }
         }
