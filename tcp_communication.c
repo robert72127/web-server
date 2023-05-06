@@ -85,9 +85,10 @@ ssize_t read_tcp (int fd, int waittime, char *buffer){
         }
 
         for (int i = 0; i < bytes_read-1; i++) {
-            if (buffer[total_bytes_read + i] == '\n' && buffer[total_bytes_read + i + 1] == '\n')
+            if (buffer[total_bytes_read + i] == '\n' && buffer[total_bytes_read + i + 1] == '\n'){
                 buffer[total_bytes_read + i + 1] = '\0';
                 break;
+            }
         }
 
         //printf("DEBUG: %ld bytes read\n", bytes_read);

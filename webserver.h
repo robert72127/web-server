@@ -17,12 +17,12 @@ struct request {
     char path[MAXLINE];
     char port[MAXLINE];
     float http_version;
-    bool bad
+    bool bad;
 };
 
 // tcp communication.c
 int open_listenfd(char *port);
-ssize_t serve(int fd, int waittime, char **path);
+ssize_t read_tcp(int fd, int waittime, char *buffer);
 void respond(int fd, char *resp_buffer);
 
 // parse.c

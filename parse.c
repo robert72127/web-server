@@ -48,11 +48,9 @@ const char *fextent(char *fname){
 }
 
 int file_size(int fd){
-    int size;
-    fseek(fd, 0, SEEK_END);
-    size = ftell(fd); 
-    fseek(fd, 0, SEEK_SET); 
-    return size;
+    struct stat st;
+    fstat(fd, &st);
+    return st.st_size;
 }
 
 //0 does not exists, 1 regular file, 2 directory
@@ -86,31 +84,21 @@ static bool check_path(char *path){
         return 0;
     }
 }
-/*need to think bit more on that*/
+
 static void move(char **str){
-    while(**str){
-        if(**str == '\n'){
-            *str++;
-            break;
-        }
-        *str++;
-    }
+    *str = strrchr(*str, '\n') + 1;
 }
 /*  parse and handle content of buffer
     return status and fills reuqest structure*/
 int parse_request(char *buffer, struct request *req, char *path){
     char host[MAXLINE];
     char port[MAXLINE];
-    char path[MAXLINE];
-    float version;
     char *buff_ = buffer; 
 
-    if (!sscanf(buff_,"GET %s HTTP/%f\n", path,version)){
+    if (!sscanf(buff_,"GET %s HTTP/%f\n", req->path,req->http_version)){
         return 0;
     }
     // checking path
-    memcpy(req->path, path, MAXLINE);
-    req->http_version = version;
     move(&buff_);
 
     if(sscanf(buff_, "Host: %s:%s", host, port)){
@@ -225,7 +213,7 @@ void create_response(struct request *req, char *resp_buffer, char *port,char *di
         fsize = file_size(fd); 
         sprintf(buf_, "HTTP/%f %d Moved Permanently\n",req->http_version, MOVED_PERMANENTLY);
         move(&buf_);
-        sprintf(buf_, "Content-Type: %d\n", fextent(req->path));
+        sprintf(buf_, "Content-Type: %s\n", fextent(req->path));
         move(&buf_);
         sprintf(buf_, "Content-Length: %d text/html\n", fsize);
         move(&buf_);

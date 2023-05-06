@@ -22,11 +22,8 @@ int main(int argc, char **argv) {
     char *resp_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     struct request *req = malloc(sizeof(struct request));
     int listenfd, confd;
-    bool keep_conv = 0;
+    int keep_conv = 0;
 
-    struct sockaddr_storage clientaddr;
-
-    socklen_t clientlen;
 
     if(argc != 3){
         fprintf(stderr, "Usage: webserver <port> <directory>.\n");
