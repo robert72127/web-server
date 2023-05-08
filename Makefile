@@ -23,5 +23,5 @@ clean:
 	rm -f $(OBJS)
 
 distclean:
-	rm -f *~ *.o webserver
+	rm -f *~ *.o webserver $(OBJS)
 

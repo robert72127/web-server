@@ -61,7 +61,7 @@ int open_listenfd(char *port){
 ssize_t read_tcp (int fd, int waittime, char *buffer){
     struct timeval tv; tv.tv_sec = waittime; tv.tv_usec = 0;
     size_t total_bytes_read = 0;
-
+    ssize_t bytes_read;
     fd_set descriptors;
     FD_ZERO(&descriptors);
     FD_SET(fd, &descriptors);
@@ -73,10 +73,10 @@ ssize_t read_tcp (int fd, int waittime, char *buffer){
             ERROR("select error");
         }
         if (ready == 0){
-            break;
+            return 0;
         }
 
-        ssize_t bytes_read = recv(fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read, 0);
+        bytes_read = recv(fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read, 0);
         if (bytes_read < 0)
             ERROR("recv error");
         if (bytes_read == 0){
@@ -84,15 +84,17 @@ ssize_t read_tcp (int fd, int waittime, char *buffer){
             return 0;
         }
 
-        for (int i = 0; i < bytes_read-1; i++) {
-            if (buffer[total_bytes_read + i] == '\n' && buffer[total_bytes_read + i + 1] == '\n'){
-                buffer[total_bytes_read + i + 1] = '\0';
-                break;
-            }
-        }
 
         //printf("DEBUG: %ld bytes read\n", bytes_read);
         total_bytes_read += bytes_read;
+        if (total_bytes_read > 3 && buffer[total_bytes_read-3] == 10 && buffer[total_bytes_read-2] == 13 && buffer[total_bytes_read-1] == 10){
+            buffer[total_bytes_read-2] = '\0';
+            break;
+        }
+        //printf("ROUND:");
+        //printf("%d\n",buffer[total_bytes_read-2]);
+        //printf("%d\n",buffer[total_bytes_read-1]);
+        //printf("TOTAL BYTES ACQUIRED %d\n", total_bytes_read);
 
     }
     return 1;

@@ -56,9 +56,9 @@ int main(int argc, char **argv) {
         } 
         
         printf("Accepted connection on port : %s\n", port);
-
         while(read_tcp(confd, WAITTIME, buffer)){
-            keep_conv = parse_request(buffer, req, directory);
+            keep_conv = parse_request(buffer, req, port);
+            printf("KEEP_CONV: %d\n", keep_conv);
             if (keep_conv == 0){
                 create_response(req, resp_buffer, port,directory, 1);
                 respond(confd,resp_buffer);

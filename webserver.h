@@ -26,5 +26,5 @@ ssize_t read_tcp(int fd, int waittime, char *buffer);
 void respond(int fd, char *resp_buffer);
 
 // parse.c
-int parse_request(char *buffer, struct request *req, char *path);
-void create_response(struct request *req, char *resp_buffer,char *port,char *dir, bool bad);
+int parse_request(char *buffer, struct request *req, char *port);
+void create_response(struct request *req, char *resp_buffer, char *port,char *dir, bool bad);
