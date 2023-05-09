@@ -14,17 +14,18 @@
 
 struct request {
     char host[MAXLINE];
-    char path[MAXLINE];
+    char path[MAXLINE*2];
     char port[MAXLINE];
     float http_version;
     bool bad;
 };
 
+
 // tcp communication.c
 int open_listenfd(char *port);
 ssize_t read_tcp(int fd, int waittime, char *buffer);
-void respond(int fd, char *resp_buffer);
+void respond(int fd, char *resp_buffer, int size);
 
 // parse.c
 int parse_request(char *buffer, struct request *req, char *port);
-void create_response(struct request *req, char *resp_buffer, char *port,char *dir, bool bad);
+int create_response(struct request *req,char *header_buffer, char *resp_buffer, char *port,char *dir, bool bad);

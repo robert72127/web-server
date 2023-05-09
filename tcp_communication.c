@@ -66,7 +66,6 @@ ssize_t read_tcp (int fd, int waittime, char *buffer){
     FD_ZERO(&descriptors);
     FD_SET(fd, &descriptors);
     while (total_bytes_read < BUFFER_SIZE) {
-       // printf("DEBUG: Current value of tv = %.3f\n", (double)tv.tv_sec + (double)tv.tv_usec / 1000000);
 
         int ready = select(fd + 1, &descriptors, NULL, NULL, &tv);
         if (ready < 0){
@@ -78,31 +77,35 @@ ssize_t read_tcp (int fd, int waittime, char *buffer){
 
         bytes_read = recv(fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read, 0);
         if (bytes_read < 0)
-            ERROR("recv error");
+            return 0;
+            //ERROR("recv error");
         if (bytes_read == 0){
             /* didnt read anything will close connection right aways*/
             return 0;
         }
 
 
-        //printf("DEBUG: %ld bytes read\n", bytes_read);
         total_bytes_read += bytes_read;
         if (total_bytes_read > 3 && buffer[total_bytes_read-3] == 10 && buffer[total_bytes_read-2] == 13 && buffer[total_bytes_read-1] == 10){
             buffer[total_bytes_read-2] = '\0';
             break;
         }
-        //printf("ROUND:");
-        //printf("%d\n",buffer[total_bytes_read-2]);
-        //printf("%d\n",buffer[total_bytes_read-1]);
-        //printf("TOTAL BYTES ACQUIRED %d\n", total_bytes_read);
-
     }
     return 1;
 }
 
 /* write response to assoctiated fd*/
-void respond(int fd, char *resp_buffer){
+void respond(int fd, char *resp_buffer, int buff_size){
     /*might need to handle if cant send all at once*/
-    if(send(fd, resp_buffer, strlen(resp_buffer), 0) == -1)
+    buff_size = (buff_size == 0)? strlen(resp_buffer) : buff_size;
+    int bytes_sent = 0;
+    int size;
+
+    while(bytes_sent < buff_size){
+        size = (buff_size < MAXCHUNK)? buff_size : MAXCHUNK;
+
+        bytes_sent += send(fd, resp_buffer+bytes_sent, size, 0);
+    }
+    if(bytes_sent == -1)
         perror("send error\n");
 }

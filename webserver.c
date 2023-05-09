@@ -20,10 +20,12 @@
 int main(int argc, char **argv) {
     char *buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     char *resp_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
+    char *header_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     struct request *req = malloc(sizeof(struct request));
     int listenfd, confd;
     int keep_conv = 0;
-
+    int wt;
+    int fsize;
 
     if(argc != 3){
         fprintf(stderr, "Usage: webserver <port> <directory>.\n");
@@ -47,7 +49,7 @@ int main(int argc, char **argv) {
     listenfd = open_listenfd(port);
     /* main loop */
     while(1){
-        
+       wt = WAITTIME; 
         /* file descriptor connected to client */
         confd = accept(listenfd, NULL, NULL);
         if(confd < 0){
@@ -55,24 +57,42 @@ int main(int argc, char **argv) {
             exit(0);
         } 
         
-        printf("Accepted connection on port : %s\n", port);
-        while(read_tcp(confd, WAITTIME, buffer)){
+        //printf("Accepted connection on port : %s\n", port);
+        while(read_tcp(confd, wt, buffer)){
             keep_conv = parse_request(buffer, req, port);
-            printf("KEEP_CONV: %d\n", keep_conv);
             if (keep_conv == 0){
-                create_response(req, resp_buffer, port,directory, 1);
-                respond(confd,resp_buffer);
+               fsize =  create_response(req,header_buffer, resp_buffer, port,directory, 1);
+                //send header
+                respond(confd,header_buffer,0);
+                respond(confd,resp_buffer, fsize);
+                //send data
                 break;
             }
             else if (keep_conv == 2){
-                create_response(req, resp_buffer,port,directory, 0);
-                respond(confd,resp_buffer);
+                fsize = create_response(req,header_buffer, resp_buffer,port,directory, 0);
+                printf("%s\n", resp_buffer);
+                respond(confd,header_buffer,0);
+                respond(confd,resp_buffer, fsize);
                 break;
             }
             else if(keep_conv == 1){
-                create_response(req, resp_buffer,port,directory, 0);
-                respond(confd,resp_buffer);
+                fsize = create_response(req,header_buffer, resp_buffer,port,directory, 0);
+                printf("%s\n", resp_buffer);
+                respond(confd,header_buffer,0);
+                respond(confd,resp_buffer, fsize);
+                wt = WAITTIME/10;
             }
+                
+            fsize = create_response(req,header_buffer, resp_buffer,port,directory, keep_conv == 0);
+            respond(confd,header_buffer,0);    
+            respond(confd,resp_buffer, fsize);
+            if(keep_conv == 0 || keep_conv == 1){
+                break;
+            }
+            else{
+                wt = WAITTIME/10;
+            }
+
         }
         close(confd);
 
@@ -80,6 +100,7 @@ int main(int argc, char **argv) {
     }
     free(req);
     free(buffer);
+    free(header_buffer);
     free(resp_buffer);
     close(listenfd);
 
