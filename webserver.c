@@ -5,19 +5,24 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
-
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <dirent.h>
 
 #include "webserver.h"
 
+pid_t child;
+
+
+void cleanup(int signal) {
+    int status;
+    while (waitpid((pid_t) (-1), 0, WNOHANG) > 0);
+}
 
 int main(int argc, char **argv) {
+
+    
     char *buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     char *resp_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     char *header_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
@@ -55,47 +60,33 @@ int main(int argc, char **argv) {
         if(confd < 0){
             fprintf(stderr, "Connection error.\n");
             exit(0);
-        } 
-        
-        //printf("Accepted connection on port : %s\n", port);
-        while(read_tcp(confd, wt, buffer)){
-            keep_conv = parse_request(buffer, req, port);
-            if (keep_conv == 0){
-               fsize =  create_response(req,header_buffer, resp_buffer, port,directory, 1);
-                //send header
-                respond(confd,header_buffer,0);
-                respond(confd,resp_buffer, fsize);
-                //send data
-                break;
-            }
-            else if (keep_conv == 2){
-                fsize = create_response(req,header_buffer, resp_buffer,port,directory, 0);
-                printf("%s\n", resp_buffer);
-                respond(confd,header_buffer,0);
-                respond(confd,resp_buffer, fsize);
-                break;
-            }
-            else if(keep_conv == 1){
-                fsize = create_response(req,header_buffer, resp_buffer,port,directory, 0);
-                printf("%s\n", resp_buffer);
-                respond(confd,header_buffer,0);
-                respond(confd,resp_buffer, fsize);
-                wt = WAITTIME/10;
-            }
-                
-            fsize = create_response(req,header_buffer, resp_buffer,port,directory, keep_conv == 0);
-            respond(confd,header_buffer,0);    
-            respond(confd,resp_buffer, fsize);
-            if(keep_conv == 0 || keep_conv == 1){
-                break;
-            }
-            else{
-                wt = WAITTIME/10;
-            }
+        }
+        //child spawned process
+        if (fork() == 0){ 
+            close(listenfd);
 
+            //printf("Accepted connection on port : %s\n", port);
+            while(read_tcp(confd, wt, buffer)){
+                keep_conv = parse_request(buffer, req, port);
+                fsize = create_response(req,header_buffer, resp_buffer,port,directory, keep_conv == 0);
+                respond(confd,header_buffer,0);    
+                respond(confd,resp_buffer, fsize);
+                if(keep_conv == 0 || keep_conv == 1){
+                    break;
+                }
+                else{
+                    wt = WAITTIME/10;
+                }
+
+            }
+            close(confd);
+            free(req);
+            free(buffer);
+            free(header_buffer);
+            free(resp_buffer);
+            exit(0);
         }
         close(confd);
-
 
     }
     free(req);

@@ -5,14 +5,10 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
-
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <sys/wait.h>
-#include <signal.h>
-#include <dirent.h>
 
 #include "webserver.h"
 
@@ -77,8 +73,7 @@ ssize_t read_tcp (int fd, int waittime, char *buffer){
 
         bytes_read = recv(fd, buffer + total_bytes_read, BUFFER_SIZE - total_bytes_read, 0);
         if (bytes_read < 0)
-            return 0;
-            //ERROR("recv error");
+            ERROR("recv error");
         if (bytes_read == 0){
             /* didnt read anything will close connection right aways*/
             return 0;
@@ -102,7 +97,7 @@ void respond(int fd, char *resp_buffer, int buff_size){
     int size;
 
     while(bytes_sent < buff_size){
-        size = (buff_size < MAXCHUNK)? buff_size : MAXCHUNK;
+        size = (buff_size < MAXCHUNK )? buff_size : MAXCHUNK;
 
         bytes_sent += send(fd, resp_buffer+bytes_sent, size, 0);
     }

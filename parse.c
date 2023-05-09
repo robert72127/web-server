@@ -1,26 +1,16 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
-
-#include <sys/mman.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <sys/wait.h>
 #include <signal.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <string.h> 
 #include <sys/stat.h>
 
 #include "webserver.h"
 
-//kind 0 binary, 1 utf
+//kind: 0 is binary, 1 is utf
 char *fextent(char *fname, int *kind){
     char *ext = strrchr(fname, '.');
     if (!ext) {
@@ -61,7 +51,6 @@ char *fextent(char *fname, int *kind){
     }
 }
 
-//ok tested giver propper size in bytes
 int file_size(FILE *fp){
     int sz;
     fseek(fp, 0L, SEEK_END);
@@ -70,7 +59,6 @@ int file_size(FILE *fp){
     return sz;
 }
 
-//ok
 //0 does not exists, 1 regular file, 2 directory, 3 forbidden
 int check_file (char *filename) {
   struct stat  buffer;   
@@ -107,21 +95,15 @@ int parse_request(char *buffer, struct request *req, char *port){
         req->http_version = 2.0;
         return 0;
     }
-    //printf("%s\n", buff_);
-    // checking path
     move(&buff_);
     
-    //req->path
-
     if(sscanf(buff_,"Host: %s \n", req->host) == 1){
         deli = strchr(req->host, ':');
         if (deli){
             strcpy(req->port, deli+1);
             *deli = '\0';
-            //printf("REQ_PORT : %s\n REQ_HOST : %s\n", req->port, req->host);
         }
         else{
-            //printf("NUT FOUND :(\n");
             memcpy(req->port, port, MAXLINE);
         }
 
@@ -133,7 +115,6 @@ int parse_request(char *buffer, struct request *req, char *port){
     else{
         return 0;
     }
-    //printf("%s\n", buff_);
 
     if(strcmp("localhost", req->host) && strcmp("virbian", req->host) && strcmp("virtual-domain.example.com", req->host)){
         return 0;
@@ -146,10 +127,6 @@ int parse_request(char *buffer, struct request *req, char *port){
     
     return 1;
 }
-
-//GET /kupony.pdf HTTP/1.1
-//Host: virbian
-//Connection: close
 
 
 static void create_header(char *buf_, char *message, char *content_type, struct request *req,int len, int code){
@@ -183,7 +160,6 @@ int create_response(struct request *req,char *header_buffer, char *resp_buffer, 
     } 
     //check path
     sprintf(full_path,"%s%s",dir, req->path);
-    //printf("FULL PATH : %s\n", full_path);
     file_status = check_file(full_path);
     int kind;
     char *extension = fextent(req->path, &kind); 
@@ -197,8 +173,6 @@ int create_response(struct request *req,char *header_buffer, char *resp_buffer, 
         sprintf(resp_buffer, "<html>\n<p>There is no such file!</p>\n/html>\n");
         break;
     case 1:
-
-
         sprintf(full_path,"%s%s",dir, req->path);
         if(!kind)
             fd = fopen(full_path, "rb");
@@ -209,10 +183,7 @@ int create_response(struct request *req,char *header_buffer, char *resp_buffer, 
         
         create_header(buf_, "OK", extension,req,fsize,OK);
 
-
-        printf("buf before::::%s\n",resp_buffer);
         fread(resp_buffer, fsize,1, fd);
-        printf("buf after:::%s\n",resp_buffer);
         break;
     case 2:
         sprintf(full_path,"%s/virbian/index.html",dir);
