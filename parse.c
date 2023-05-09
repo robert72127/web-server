@@ -81,9 +81,6 @@ int check_file (char *filename) {
 static void move(char **str){
     *str = strchr(*str, '\n') + 1;
 }
-static void move_last(char **str){
-    *str = strrchr(*str, '\n') + 1;
-}
 
 /*  parse and handle content of buffer
     return status and fills reuqest structure*/
@@ -119,9 +116,10 @@ int parse_request(char *buffer, struct request *req, char *port){
     if(strcmp("localhost", req->host) && strcmp("virbian", req->host) && strcmp("virtual-domain.example.com", req->host)){
         return 0;
     }    
-    move_last(&buff_);
+    move(&buff_);
     
-    if(buff_ && sscanf(buff_,"Connection: close\r\n")){
+    
+    if(buff_ && strstr(buff_,"Connection: close")){
         return 2;
     }
     
@@ -168,9 +166,9 @@ int create_response(struct request *req,char *header_buffer, char *resp_buffer, 
     switch (file_status)
     {
     case 0:
-        fsize = 41;
-        create_header(buf_, "Not Found", extension,req,41,NOT_FOUND);
-        sprintf(resp_buffer, "<html>\n<p>There is no such file!</p>\n/html>\n");
+        fsize = 45;
+        create_header(buf_, "Not Found", extension,req,45,NOT_FOUND);
+        sprintf(resp_buffer, "<html>\n<p>There is no such file!</p>\n</html>\n");
         break;
     case 1:
         sprintf(full_path,"%s%s",dir, req->path);
