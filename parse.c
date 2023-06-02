@@ -160,11 +160,11 @@ void create_response(struct request*req, struct response *resp,char *dir){
     char full_path[MAXLINE*2+2];
     //treat bad port also as incomprehensible data
     if (req->bad){
-        resp->header_size = create_header(buf_, "Not Implemented", "text/html",req,49,NOT_IMPLEMENTED);
+        resp->message_size =  51;
+        resp->header_size = create_header(buf_, "Not Implemented", "text/html",req,resp->message_size,NOT_IMPLEMENTED);
         sprintf(resp->message, "<html>\n<p>Bad request, not implemented!</p>\n</html>\n");
     
         memset(req, 0, sizeof(struct request));
-        resp->message_size =  49;
         return;
     }
 
