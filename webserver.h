@@ -16,11 +16,18 @@
 #define NOT_IMPLEMENTED 501 // browser sends incomprehensible data
 
 struct request {
-    char host[MAXLINE];
-    char path[MAXLINE*2];
+    char path[2*MAXLINE];
     char port[MAXLINE];
+    char host[MAXLINE];
     float http_version;
+    bool keep_conv;
     bool bad;
+};
+struct response{
+    char header[BUFFER_SIZE];
+    char message[BUFFER_SIZE];
+    int header_size;
+    int message_size;
 };
 
 
@@ -30,5 +37,5 @@ ssize_t read_tcp(int fd, int waittime, char *buffer);
 void respond(int fd, char *resp_buffer, int size);
 
 // parse.c
-int parse_request(char *buffer, struct request *req, char *port);
-int create_response(struct request *req,char *header_buffer, char *resp_buffer, char *port,char *dir, bool bad);
+void parse_request(char *buffer, struct request *req, char *port);
+void create_response(struct request *req,struct response *resp,char *dir);
