@@ -24,13 +24,11 @@ int main(int argc, char **argv) {
 
     
     char *buffer = malloc(sizeof(char) * BUFFER_SIZE); 
-    char *resp_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
-    char *header_buffer = malloc(sizeof(char) * BUFFER_SIZE); 
+    struct response *resp = malloc(sizeof(struct response));  
     struct request *req = malloc(sizeof(struct request));
+
     int listenfd, confd;
-    int keep_conv = 0;
     int wt;
-    int fsize;
 
     if(argc != 3){
         fprintf(stderr, "Usage: webserver <port> <directory>.\n");
@@ -65,25 +63,28 @@ int main(int argc, char **argv) {
         if (fork() == 0){ 
             close(listenfd);
 
-            //printf("Accepted connection on port : %s\n", port);
             while(read_tcp(confd, wt, buffer)){
-                keep_conv = parse_request(buffer, req, port);
-                fsize = create_response(req,header_buffer, resp_buffer,port,directory, keep_conv == 0);
-                respond(confd,header_buffer,0);    
-                respond(confd,resp_buffer, fsize);
-                if(keep_conv == 0 || keep_conv == 1){
-                    break;
+                parse_request(buffer, req, port);
+                create_response(req, resp,directory);
+                
+                respond(confd,resp->header,resp->header_size);
+                if (resp->message_size > 0) {
+                    respond(confd,resp->message, resp->message_size);
+                }
+                
+                memset(resp,0, sizeof(struct response));
+                if(req->keep_conv){
+                    wt = WAITTIME / 10 ;
                 }
                 else{
-                    wt = WAITTIME/10;
+                    break;
                 }
 
             }
             close(confd);
             free(req);
             free(buffer);
-            free(header_buffer);
-            free(resp_buffer);
+            free(resp);
             exit(0);
         }
         close(confd);
@@ -91,8 +92,7 @@ int main(int argc, char **argv) {
     }
     free(req);
     free(buffer);
-    free(header_buffer);
-    free(resp_buffer);
+    free(resp);
     close(listenfd);
 
 }
