@@ -59,7 +59,7 @@ int file_size(FILE *fp){
     return sz;
 }
 
-//0 does not exists, 1 regular file, 2 directory, 3 forbidden
+//0 does not exists, 1 regular file, 2 forbidden, 3 directory
 int check_file (char *filename) {
   struct stat  buffer;   
   int size = strlen(filename);
@@ -67,10 +67,10 @@ int check_file (char *filename) {
     if( S_ISDIR(buffer.st_mode)){
         for(int i = 0; i < size -2; i++){
             if (filename[i] == '.' && filename[i+1] == '.' && filename[i+2] == '/'){
-                return 3;
+                return 2;
             }
         }       
-        return 2;
+        return 3;
     }
     return 1;
   }
@@ -82,18 +82,19 @@ static void move(char **str){
     *str = strchr(*str, '\n') + 1;
 }
 
-/*  parse and handle content of buffer
-    return status and fills reuqest structure*/
-int parse_request(char *buffer, struct request *req, char *port){ 
+/* fills req structure with content from buffer */
+void parse_request(char *buffer, struct request *req, char *port){ 
+    req->bad = 0;
+    req->keep_conv = 1;
     char path_[MAXLINE];
+
     char *hlp,*deli, *buff_ = buffer;
 
     if (sscanf(buff_,"GET %s HTTP/%f\n", path_,&req->http_version) != 2){
         req->http_version = 2.0;
-        return 0;
     }
-    move(&buff_);
-    
+    move(&buff_); 
+
     if(sscanf(buff_,"Host: %s \n", req->host) == 1){
         deli = strchr(req->host, ':');
         if (deli){
@@ -104,71 +105,81 @@ int parse_request(char *buffer, struct request *req, char *port){
             memcpy(req->port, port, MAXLINE);
         }
 
-        sprintf(req->path,"/%s", req->host);
+        //sprintf(req->path,"/%s", req->host);
+        sprintf(req->path,"%s", req->host);
         hlp = strchr(req->path, '\0');
-        sprintf(hlp,"%s", path_);
-
+        if (hlp)
+            sprintf(hlp,"%s", path_);
     }
     else{
-        return 0;
+        req->bad = 1;
+        return;
     }
 
     if(strcmp("localhost", req->host) && strcmp("virbian", req->host) && strcmp("virtual-domain.example.com", req->host)){
-        return 0;
+        req->bad = 1;
+        return;
     }    
     move(&buff_);
     
-    
+
     if(buff_ && strstr(buff_,"Connection: close")){
-        return 2;
+        req->keep_conv = 0;
     }
-    
-    return 1;
 }
 
-
-static void create_header(char *buf_, char *message, char *content_type, struct request *req,int len, int code){
+//header is written to buf_, and return value is it's size
+static int create_header(char *buf_, char *message, char *content_type, struct request *req,int len, int code){
+        char *start = buf_;
         sprintf(buf_, "HTTP/%.2f %d %s\n",req->http_version, code, message);
         move(&buf_);
-        sprintf(buf_, "Content-Type: %s\n", content_type);
-        move(&buf_);
-        sprintf(buf_, "Content-Length: %d\n", len);
-        move(&buf_);
-        sprintf(buf_, "\n");
-        move(&buf_);
+        
+        if(code == MOVED_PERMANENTLY){
+            sprintf(buf_, "Location: http://%s:%s/index.html\n", req->host, req->port);
+            move(&buf_);
+            sprintf(buf_, "\n");
+            move(&buf_);
+        }
+        else{
+            sprintf(buf_, "Content-Type: %s\n", content_type);
+            move(&buf_);
+            sprintf(buf_, "Content-Length: %d\n", len);
+            move(&buf_);
+            sprintf(buf_, "\n");
+            move(&buf_);
+        }
 
+        return (int)(buf_ - start)/ (sizeof (char)) ;  
 }
 
-int create_response(struct request *req,char *header_buffer, char *resp_buffer, char *port,char *dir, bool bad){
-    char *buf_ = header_buffer;
-    int file_status, fsize;
+// fills response structure
+void create_response(struct request*req, struct response *resp,char *dir){
+    char *buf_ = resp->header;
+    int file_status;
     FILE *fd;
-    char full_path[MAXLINE*2];
+    char full_path[MAXLINE*2+2];
     //treat bad port also as incomprehensible data
-    if(!req->port ||  strcmp(port, req->port)){
-        bad = 1;
-    }
-    if (bad){
-        create_header(buf_, "Not Implemented", "text/html",req,49,NOT_IMPLEMENTED);
-        sprintf(resp_buffer, "<html>\n<p>Bad request, not implemented!</p>\n</html>\n");
+    if (req->bad){
+        resp->header_size = create_header(buf_, "Not Implemented", "text/html",req,49,NOT_IMPLEMENTED);
+        sprintf(resp->message, "<html>\n<p>Bad request, not implemented!</p>\n</html>\n");
     
         memset(req, 0, sizeof(struct request));
-        fsize = 49;
-        return fsize;
-    } 
+        resp->message_size =  49;
+        return;
+    }
+
     //check path
     sprintf(full_path,"%s%s",dir, req->path);
     file_status = check_file(full_path);
     int kind;
     char *extension = fextent(req->path, &kind); 
 
-
     switch (file_status)
     {
     case 0:
-        fsize = 45;
-        create_header(buf_, "Not Found", extension,req,45,NOT_FOUND);
-        sprintf(resp_buffer, "<html>\n<p>There is no such file!</p>\n</html>\n");
+        resp->message_size = 45;
+        resp->header_size = create_header(buf_, "Not Found", extension,req,resp->message_size,NOT_FOUND);
+        sprintf(resp->message, "<html>\n<p>There is no such file!</p>\n</html>\n");
         break;
     case 1:
         sprintf(full_path,"%s%s",dir, req->path);
@@ -177,26 +188,22 @@ int create_response(struct request *req,char *header_buffer, char *resp_buffer, 
         else
             fd = fopen(full_path, "r");
 
-        fsize = file_size(fd);         
+        resp->message_size = file_size(fd);         
         
-        create_header(buf_, "OK", extension,req,fsize,OK);
+        create_header(buf_, "OK", extension,req,resp->message_size,OK);
 
-        fread(resp_buffer, fsize,1, fd);
+        fread(resp->message, resp->message_size,1, fd);
         break;
     case 2:
-        sprintf(full_path,"%s/virbian/index.html",dir);
-        fd = fopen(full_path, "r");
-        fsize = file_size(fd); 
-
-        create_header(buf_, "Moved Permanently", extension,req,fsize,MOVED_PERMANENTLY);
-        fread(resp_buffer,fsize,1,fd);
+        resp->message_size = 69;
+        resp->header_size =  create_header(buf_, "Forbidden", extension,req,resp->message_size,FORBIDDEN);
+        sprintf(resp->message, "<html>\n<p>Trying to acces file laying beyond main directory!</p>\n</html>\n"); 
         break;
     case 3:
-        fsize = 69;
-        create_header(buf_, "Forbidden", extension,req,69,FORBIDDEN);
-        sprintf(resp_buffer, "<html>\n<p>Trying to acces file laying beyond main directory!</p>\n</html>\n"); 
+        resp->message_size = 0;
+        resp->header_size =  create_header(buf_, "Moved Permanently", extension,req,resp->message_size, MOVED_PERMANENTLY);
         break;
     }
     memset(req, 0, sizeof(struct request));
-    return fsize;
+
 }
