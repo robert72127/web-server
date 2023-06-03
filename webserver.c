@@ -21,7 +21,7 @@ void cleanup(int signal) {
 }
 
 int main(int argc, char **argv) {
-
+    signal(SIGCHLD, child_handler);
     
     char *buffer = malloc(sizeof(char) * BUFFER_SIZE); 
     struct response *resp = malloc(sizeof(struct response));  
